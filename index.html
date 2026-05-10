@@ -1,412 +1,483 @@
-import React, { useMemo, useState } from "react";
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>超市价格对比 · 中文购物课堂</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --cn: #C41E3A; --cn-lt: #FEE2E2; --cn-dk: #9B1626;
+  --kh: #1A56A0; --kh-lt: #DBEAFE; --kh-dk: #1040807;
+  --gold: #B45309; --gold-lt: #FEF3C7;
+  --teal: #0D7377; --teal-lt: #CCFBF1;
+  --bg: #FAFAF8; --surface: #FFFFFF;
+  --border: #E5E2DC; --border-2: #D1CCC3;
+  --text: #18181B; --t2: #52525B; --t3: #A1A1AA;
+}
+body {
+  font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB', 'Helvetica Neue', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+.page { max-width: 920px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+
+/* ── Hero ── */
+.hero {
+  display: flex; align-items: flex-start; gap: 2rem;
+  padding: 2rem 0 2rem; margin-bottom: 1.5rem;
+}
+.hero-left { flex: 1; }
+.hero-tag {
+  display: inline-block; font-size: 11px; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--t3); margin-bottom: 0.75rem;
+}
+.hero h1 {
+  font-size: 32px; font-weight: 700; letter-spacing: -0.02em;
+  color: var(--text); margin-bottom: 0.4rem; line-height: 1.15;
+}
+.hero-sub { font-size: 14px; color: var(--t2); max-width: 420px; line-height: 1.65; }
+.hero-flags {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 1rem 1.25rem; background: var(--surface);
+  border: 1.5px solid var(--border); border-radius: 14px; min-width: 200px;
+}
+.flag-row {
+  display: flex; align-items: center; gap: 10px; font-size: 13px;
+}
+.flag-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.flag-row .name { font-weight: 600; color: var(--text); }
+.flag-row .rate { font-size: 11px; color: var(--t3); margin-left: auto; }
+.flag-divider { border: none; border-top: 1px solid var(--border); margin: 2px 0; }
+
+/* ── Tabs ── */
+.tabs { display: flex; gap: 6px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.tab {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 16px; border-radius: 9px; font-size: 13px; font-weight: 500;
+  cursor: pointer; border: 1.5px solid var(--border);
+  background: var(--surface); color: var(--t2); transition: all 0.12s;
+}
+.tab:hover { border-color: var(--border-2); color: var(--text); }
+.tab.active { background: var(--text); color: #fff; border-color: var(--text); }
+.tab-n {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%; font-size: 10px; font-weight: 600;
+  background: rgba(255,255,255,0.22); color: inherit;
+}
+.tab:not(.active) .tab-n { background: #F0EDE8; color: var(--t3); }
+
+/* ── Item cards grid ── */
+.grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+  gap: 10px; margin-bottom: 2.5rem;
+}
+.card {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 14px; padding: 1rem; transition: border-color 0.12s, transform 0.1s;
+}
+.card:hover { border-color: var(--border-2); transform: translateY(-1px); }
+.card-cat {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--t3); margin-bottom: 5px;
+}
+.card-zh {
+  font-size: 30px; font-weight: 700; color: var(--text); line-height: 1.1;
+  margin-bottom: 3px;
+}
+.card-py { font-size: 12px; color: var(--gold); font-style: italic; margin-bottom: 1px; }
+.card-en { font-size: 11px; color: var(--t3); margin-bottom: 11px; }
+.card-hr { border: none; border-top: 1px solid var(--border); margin-bottom: 9px; }
+.price-r {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 5px; font-size: 12px;
+}
+.p-label { font-size: 11px; }
+.p-val { font-weight: 700; font-size: 13px; }
+.bars { margin-top: 9px; }
+.bar-row { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; }
+.bar-flag { font-size: 11px; width: 18px; text-align: center; }
+.bar-track { flex: 1; height: 5px; background: #F0EDE8; border-radius: 3px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 3px; }
+.bar-usd { font-size: 10px; color: var(--t3); min-width: 38px; text-align: right; }
+.badge {
+  display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 9px;
+  border-radius: 100px; margin-top: 9px; letter-spacing: 0.01em;
+}
+.badge-cn { background: var(--cn-lt); color: var(--cn); }
+.badge-kh { background: var(--kh-lt); color: var(--kh); }
+.badge-eq { background: #F4F4F5; color: var(--t2); }
+
+/* ── Phrases ── */
+.section { border-top: 1px solid var(--border); padding-top: 2rem; margin-bottom: 2.5rem; }
+.sec-hd { font-size: 19px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+.sec-sub { font-size: 13px; color: var(--t2); margin-bottom: 1.25rem; }
+.phrases { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 8px; }
+.phrase {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 11px; padding: 0.875rem 1rem; cursor: pointer;
+  transition: border-color 0.12s;
+}
+.phrase:hover { border-color: var(--border-2); }
+.phrase-zh { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.phrase-py { font-size: 12px; color: var(--gold); font-style: italic; margin-bottom: 2px; }
+.phrase-en { font-size: 12px; color: var(--t3); }
+.phrase.flipped { background: #FAFAF8; }
+.phrase.flipped .phrase-zh { font-size: 13px; font-weight: 400; color: var(--t2); }
+.phrase.flipped .phrase-py { color: var(--t3); }
+.phrase.flipped .phrase-en { font-size: 15px; font-weight: 600; color: var(--text); }
+
+/* ── Quiz ── */
+.quiz-box {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: 16px; padding: 1.5rem;
+}
+.quiz-prog { display: flex; gap: 5px; margin-bottom: 1.25rem; }
+.q-dot {
+  height: 5px; flex: 1; border-radius: 3px; background: #F0EDE8;
+  transition: background 0.2s;
+}
+.q-dot.done { background: var(--teal); }
+.q-dot.cur { background: var(--text); }
+.q-label { font-size: 12px; color: var(--t3); margin-bottom: 6px; }
+.q-zh { font-size: 42px; font-weight: 700; color: var(--text); line-height: 1; margin-bottom: 4px; }
+.q-py { font-size: 15px; color: var(--gold); font-style: italic; margin-bottom: 1.25rem; }
+.q-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.q-opt {
+  padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px;
+  background: var(--surface); color: var(--text); font-size: 13px;
+  cursor: pointer; transition: all 0.12s; text-align: center; line-height: 1.3;
+}
+.q-opt:hover:not([disabled]) { border-color: var(--border-2); background: var(--bg); }
+.q-opt.ok { background: var(--teal-lt); border-color: var(--teal); color: var(--teal); font-weight: 700; }
+.q-opt.ng { background: var(--cn-lt); border-color: var(--cn); color: var(--cn); }
+.q-opt[disabled] { cursor: default; }
+.q-feedback {
+  margin-top: 1rem; font-size: 13px; font-weight: 600;
+  padding: 8px 14px; border-radius: 8px; text-align: center;
+}
+.q-feedback.ok { background: var(--teal-lt); color: var(--teal); }
+.q-feedback.ng { background: var(--cn-lt); color: var(--cn); }
+
+/* quiz score */
+.q-score { text-align: center; padding: 1rem 0; }
+.q-score-big { font-size: 52px; font-weight: 700; color: var(--text); line-height: 1; }
+.q-score-of { font-size: 15px; color: var(--t2); margin-bottom: 6px; }
+.q-score-msg { font-size: 14px; color: var(--t2); margin-bottom: 1.5rem; }
+.btn-dark {
+  background: var(--text); color: #fff; border: none;
+  padding: 10px 28px; border-radius: 9px; font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: opacity 0.12s;
+}
+.btn-dark:hover { opacity: 0.82; }
+
+/* ── Vocabulary table ── */
+.vocab-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.vocab-table th {
+  text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--t3);
+  border-bottom: 1px solid var(--border); background: #FAFAF8;
+}
+.vocab-table td {
+  padding: 10px 12px; border-bottom: 1px solid #F0EDE8; vertical-align: middle;
+}
+.vocab-table tr:last-child td { border-bottom: none; }
+.vocab-table tr:hover td { background: #FAFAF8; }
+.vt-zh { font-size: 18px; font-weight: 700; color: var(--text); }
+.vt-py { font-size: 11px; color: var(--gold); font-style: italic; }
+.vt-kh { color: var(--kh); font-weight: 600; }
+.vt-cn { color: var(--cn); font-weight: 600; }
+.cheaper-cell { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 100px; }
+
+@media (max-width: 620px) {
+  .hero { flex-direction: column; gap: 1rem; }
+  .hero-flags { width: 100%; }
+  .q-opts { grid-template-columns: 1fr; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ── Hero ── -->
+<div class="hero">
+  <div class="hero-left">
+    <div class="hero-tag">中文购物课堂 · Mandarin Shopping Class</div>
+    <h1>超市价格对比<br><span style="font-size:20px; font-weight:400; color:var(--t2); letter-spacing:0;">Cambodia 🇰🇭 vs China 🇨🇳</span></h1>
+    <p class="hero-sub" style="margin-top:10px;">通过柬埔寨与中国日常物品的价格对比，帮助学生学习在中国超市购物所需的中文词汇。</p>
+  </div>
+  <div class="hero-flags">
+    <div class="flag-row">
+      <div class="flag-dot" style="background:var(--kh);"></div>
+      <span>🇰🇭 柬埔寨</span>
+      <span class="rate">$1 ≈ 4,100 ៛</span>
+    </div>
+    <div class="flag-divider"></div>
+    <div class="flag-row">
+      <div class="flag-dot" style="background:var(--cn);"></div>
+      <span>🇨🇳 中国</span>
+      <span class="rate">$1 ≈ ¥7.2</span>
+    </div>
+    <div style="margin-top:6px; font-size:10px; color:var(--t3); line-height:1.5;">
+      价格仅供参考<br>Prices approximate (2025)
+    </div>
+  </div>
+</div>
+
+<!-- ── Category tabs ── -->
+<div class="tabs" id="tabs">
+  <button class="tab active" data-cat="all" onclick="setFilter('all')">全部 All <span class="tab-n" id="n-all"></span></button>
+  <button class="tab" data-cat="food" onclick="setFilter('food')">🥩 食品 Food <span class="tab-n" id="n-food"></span></button>
+  <button class="tab" data-cat="drink" onclick="setFilter('drink')">🥛 饮品 Drinks <span class="tab-n" id="n-drink"></span></button>
+  <button class="tab" data-cat="household" onclick="setFilter('household')">🧴 日用品 Household <span class="tab-n" id="n-household"></span></button>
+</div>
+
+<!-- ── Cards grid ── -->
+<div class="grid" id="grid"></div>
+
+<!-- ── Vocabulary table ── -->
+<div class="section">
+  <div class="sec-hd">词汇总表 · Vocabulary table</div>
+  <div class="sec-sub">所有商品的中文词汇一览表，方便教师讲解和学生复习。</div>
+  <div style="overflow-x:auto; border: 1.5px solid var(--border); border-radius: 12px;">
+    <table class="vocab-table" id="vocab"></table>
+  </div>
+</div>
+
+<!-- ── Shopping phrases ── -->
+<div class="section">
+  <div class="sec-hd">购物常用语 · Shopping phrases</div>
+  <div class="sec-sub">点击卡片可翻转查看英文翻译 — Click a card to reveal the English translation</div>
+  <div class="phrases" id="phrases"></div>
+</div>
+
+<!-- ── Quiz ── -->
+<div class="section">
+  <div class="sec-hd">小测验 · Quick quiz</div>
+  <div class="sec-sub">测试你对中文购物词汇的掌握 — Test your knowledge of shopping vocabulary</div>
+  <div class="quiz-box" id="quiz"></div>
+</div>
+
+</div><!-- /page -->
+
+<script>
+const KHR = 4100, RMB = 7.2;
 
 const items = [
-  {
-    id: 1,
-    nameZh: "鸡蛋",
-    nameEn: "Eggs",
-    china: 18,
-    cambodia: 12,
-    category: "食物",
-    sentence: "我想买一盒鸡蛋。",
-  },
-  {
-    id: 2,
-    nameZh: "牛奶",
-    nameEn: "Milk",
-    china: 15,
-    cambodia: 10,
-    category: "饮料",
-    sentence: "这个牛奶多少钱？",
-  },
-  {
-    id: 3,
-    nameZh: "苹果",
-    nameEn: "Apple",
-    china: 9,
-    cambodia: 8,
-    category: "水果",
-    sentence: "我要两个苹果。",
-  },
-  {
-    id: 4,
-    nameZh: "矿泉水",
-    nameEn: "Water",
-    china: 3,
-    cambodia: 2,
-    category: "饮料",
-    sentence: "请给我一瓶水。",
-  },
-  {
-    id: 5,
-    nameZh: "牙膏",
-    nameEn: "Toothpaste",
-    china: 12,
-    cambodia: 9,
-    category: "日用品",
-    sentence: "牙膏在哪里？",
-  },
-  {
-    id: 6,
-    nameZh: "洗发水",
-    nameEn: "Shampoo",
-    china: 28,
-    cambodia: 22,
-    category: "日用品",
-    sentence: "我想买一瓶洗发水。",
-  },
+  { zh:'大米',  py:'dà mǐ',         en:'Rice',           unit:'1 kg',    cat:'food',      khr:3500,  rmb:4  },
+  { zh:'猪肉',  py:'zhū ròu',        en:'Pork',           unit:'1 kg',    cat:'food',      khr:25000, rmb:24 },
+  { zh:'鸡肉',  py:'jī ròu',         en:'Chicken',        unit:'1 kg',    cat:'food',      khr:18000, rmb:17 },
+  { zh:'鸡蛋',  py:'jī dàn',         en:'Eggs',           unit:'10 pcs',  cat:'food',      khr:7000,  rmb:9  },
+  { zh:'香蕉',  py:'xiāng jiāo',     en:'Bananas',        unit:'1 kg',    cat:'food',      khr:3000,  rmb:5  },
+  { zh:'面包',  py:'miàn bāo',       en:'Bread',          unit:'1 loaf',  cat:'food',      khr:5000,  rmb:9  },
+  { zh:'矿泉水', py:'kuàng quán shuǐ',en:'Mineral water',  unit:'500 ml',  cat:'drink',     khr:1000,  rmb:2  },
+  { zh:'牛奶',  py:'niú nǎi',        en:'Milk',           unit:'1 L',     cat:'drink',     khr:7500,  rmb:10 },
+  { zh:'果汁',  py:'guǒ zhī',        en:'Fruit juice',    unit:'1 L',     cat:'drink',     khr:9000,  rmb:12 },
+  { zh:'咖啡',  py:'kā fēi',         en:'Coffee',         unit:'box',     cat:'drink',     khr:11000, rmb:18 },
+  { zh:'洗发水', py:'xǐ fà shuǐ',    en:'Shampoo',        unit:'400 ml',  cat:'household', khr:11000, rmb:24 },
+  { zh:'牙膏',  py:'yá gāo',         en:'Toothpaste',     unit:'120 g',   cat:'household', khr:5500,  rmb:11 },
+  { zh:'洗衣粉', py:'xǐ yī fěn',     en:'Laundry powder', unit:'1 kg',    cat:'household', khr:7500,  rmb:17 },
+  { zh:'卫生纸', py:'wèi shēng zhǐ', en:'Toilet paper',   unit:'4 rolls', cat:'household', khr:4000,  rmb:10 },
 ];
 
-function App() {
-  const [tab, setTab] = useState("prices");
-  const [search, setSearch] = useState("");
-  const [cart, setCart] = useState({});
-  const [selectedItem, setSelectedItem] = useState("鸡蛋");
-  const [quantity, setQuantity] = useState("一盒");
+const phrases = [
+  { zh:'这个多少钱？',        py:'Zhège duōshao qián?',      en:'How much is this?' },
+  { zh:'太贵了！',            py:'Tài guì le!',               en:'Too expensive!' },
+  { zh:'便宜一点行吗？',      py:'Piányí yīdiǎn xíng ma?',   en:'Can you lower the price?' },
+  { zh:'我要买……',           py:'Wǒ yào mǎi…',              en:'I want to buy...' },
+  { zh:'在哪里付款？',        py:'Zài nǎlǐ fùkuǎn?',        en:'Where do I pay?' },
+  { zh:'有没有打折？',        py:'Yǒu méiyǒu dǎzhé?',       en:'Is there a discount?' },
+  { zh:'可以刷卡吗？',        py:'Kěyǐ shuā kǎ ma?',        en:'Can I pay by card?' },
+  { zh:'请给我一个袋子。',    py:'Qǐng gěi wǒ yīgè dàizi.', en:'Please give me a bag.' },
+  { zh:'我在找……',           py:'Wǒ zài zhǎo…',             en:"I'm looking for..." },
+  { zh:'这个在哪里？',        py:'Zhège zài nǎlǐ?',          en:'Where is this?' },
+  { zh:'请问，有没有……？',   py:'Qǐngwèn, yǒu méiyǒu…?',   en:'Excuse me, do you have...?' },
+  { zh:'谢谢！',              py:'Xièxiè!',                   en:'Thank you!' },
+];
 
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => {
-      return (
-        item.nameZh.includes(search) ||
-        item.nameEn.toLowerCase().includes(search.toLowerCase())
-      );
-    });
-  }, [search]);
+const catNames = { food:'食品', drink:'饮品', household:'日用品' };
 
-  const addToCart = (itemId) => {
-    setCart((prev) => ({
-      ...prev,
-      [itemId]: (prev[itemId] || 0) + 1,
-    }));
-  };
-
-  const removeFromCart = (itemId) => {
-    setCart((prev) => {
-      const next = { ...prev };
-
-      if (!next[itemId]) {
-        return next;
-      }
-
-      next[itemId] -= 1;
-
-      if (next[itemId] <= 0) {
-        delete next[itemId];
-      }
-
-      return next;
-    });
-  };
-
-  const total = Object.entries(cart).reduce((sum, entry) => {
-    const id = Number(entry[0]);
-    const qty = entry[1];
-
-    const item = items.find((i) => i.id === id);
-
-    if (!item) {
-      return sum;
-    }
-
-    return sum + item.china * qty;
-  }, 0);
-
-  const practiceSentence = `我想买${quantity}${selectedItem}。`;
-
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#f3f7fb",
-        padding: "24px",
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "1200px",
-          margin: "0 auto",
-        }}
-      >
-        <div
-          style={{
-            background: "white",
-            padding: "24px",
-            borderRadius: "20px",
-            marginBottom: "20px",
-            boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
-          }}
-        >
-          <h1 style={{ fontSize: "40px", marginBottom: "12px" }}>
-            柬埔寨与中国超市价格教学网页
-          </h1>
-
-          <p style={{ fontSize: "18px", color: "#555" }}>
-            帮助学生学习中文购物、价格表达、超市对话。
-          </p>
-        </div>
-
-        <div style={{ display: "flex", gap: "12px", marginBottom: "20px" }}>
-          <button
-            onClick={() => setTab("prices")}
-            style={buttonStyle(tab === "prices")}
-          >
-            价格对比
-          </button>
-
-          <button
-            onClick={() => setTab("practice")}
-            style={buttonStyle(tab === "practice")}
-          >
-            句型练习
-          </button>
-
-          <button
-            onClick={() => setTab("cart")}
-            style={buttonStyle(tab === "cart")}
-          >
-            购物车
-          </button>
-        </div>
-
-        {tab === "prices" && (
-          <div>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索商品"
-              style={{
-                width: "100%",
-                padding: "14px",
-                borderRadius: "12px",
-                border: "1px solid #ccc",
-                marginBottom: "20px",
-                fontSize: "16px",
-              }}
-            />
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-                gap: "20px",
-              }}
-            >
-              {filteredItems.map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    background: "white",
-                    padding: "20px",
-                    borderRadius: "18px",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-                  }}
-                >
-                  <h2 style={{ marginBottom: "6px" }}>{item.nameZh}</h2>
-
-                  <p style={{ color: "#777", marginBottom: "12px" }}>
-                    {item.nameEn}
-                  </p>
-
-                  <div style={{ marginBottom: "8px" }}>
-                    🇨🇳 中国价格：¥{item.china}
-                  </div>
-
-                  <div style={{ marginBottom: "12px" }}>
-                    🇰🇭 柬埔寨价格：¥{item.cambodia}
-                  </div>
-
-                  <div
-                    style={{
-                      background: "#eef6ff",
-                      padding: "10px",
-                      borderRadius: "10px",
-                      marginBottom: "14px",
-                    }}
-                  >
-                    {item.sentence}
-                  </div>
-
-                  <button
-                    onClick={() => addToCart(item.id)}
-                    style={addButtonStyle}
-                  >
-                    加入购物车
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {tab === "practice" && (
-          <div
-            style={{
-              background: "white",
-              padding: "24px",
-              borderRadius: "20px",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-            }}
-          >
-            <h2 style={{ marginBottom: "20px" }}>中文购物句型练习</h2>
-
-            <div style={{ marginBottom: "20px" }}>
-              <div style={{ marginBottom: "10px" }}>选择商品：</div>
-
-              <select
-                value={selectedItem}
-                onChange={(e) => setSelectedItem(e.target.value)}
-                style={selectStyle}
-              >
-                {items.map((item) => (
-                  <option key={item.id}>{item.nameZh}</option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ marginBottom: "20px" }}>
-              <div style={{ marginBottom: "10px" }}>选择数量：</div>
-
-              <select
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                style={selectStyle}
-              >
-                <option>一盒</option>
-                <option>一个</option>
-                <option>一瓶</option>
-                <option>两个</option>
-              </select>
-            </div>
-
-            <div
-              style={{
-                background: "#e8f4ff",
-                padding: "20px",
-                borderRadius: "16px",
-                fontSize: "24px",
-                fontWeight: "bold",
-              }}
-            >
-              {practiceSentence}
-            </div>
-          </div>
-        )}
-
-        {tab === "cart" && (
-          <div
-            style={{
-              background: "white",
-              padding: "24px",
-              borderRadius: "20px",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-            }}
-          >
-            <h2 style={{ marginBottom: "20px" }}>模拟购物车</h2>
-
-            {items.map((item) => {
-              const qty = cart[item.id] || 0;
-
-              return (
-                <div
-                  key={item.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "16px",
-                    borderBottom: "1px solid #eee",
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: "bold" }}>
-                      {item.nameZh}
-                    </div>
-
-                    <div style={{ color: "#666" }}>
-                      ¥{item.china}
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                    <button
-                      onClick={() => removeFromCart(item.id)}
-                      style={smallButton}
-                    >
-                      -
-                    </button>
-
-                    <span>{qty}</span>
-
-                    <button
-                      onClick={() => addToCart(item.id)}
-                      style={smallButton}
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-
-            <div
-              style={{
-                marginTop: "24px",
-                background: "#eef8ee",
-                padding: "20px",
-                borderRadius: "16px",
-                fontSize: "28px",
-                fontWeight: "bold",
-              }}
-            >
-              总价：¥{total}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+function u2(n) { return parseFloat((n).toFixed(2)); }
+function cheaperSide(item) {
+  const dK = u2(item.khr / KHR), dR = u2(item.rmb / RMB);
+  const diff = Math.abs(dK - dR) / ((dK + dR) / 2);
+  if (diff < 0.07) return 'eq';
+  return dK < dR ? 'kh' : 'cn';
 }
 
-const buttonStyle = (active) => ({
-  padding: "12px 22px",
-  borderRadius: "12px",
-  border: "none",
-  cursor: "pointer",
-  background: active ? "#2563eb" : "white",
-  color: active ? "white" : "#333",
-  fontSize: "16px",
-  boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
+function renderCard(item) {
+  const uK = u2(item.khr / KHR), uR = u2(item.rmb / RMB);
+  const mx = Math.max(uK, uR);
+  const pK = Math.round(uK / mx * 100), pR = Math.round(uR / mx * 100);
+  const c = cheaperSide(item);
+  const bl = { kh:'柬埔寨更便宜 KH cheaper', cn:'中国更便宜 CN cheaper', eq:'价格相近 Similar' }[c];
+  const bc = { kh:'badge-kh', cn:'badge-cn', eq:'badge-eq' }[c];
+  const catLabel = catNames[item.cat];
+  return `<div class="card">
+    <div class="card-cat">${catLabel} · ${item.unit}</div>
+    <div class="card-zh">${item.zh}</div>
+    <div class="card-py">${item.py}</div>
+    <div class="card-en">${item.en}</div>
+    <hr class="card-hr">
+    <div class="price-r">
+      <span class="p-label" style="color:var(--kh)">🇰🇭 柬埔寨</span>
+      <span class="p-val" style="color:var(--kh)">${item.khr.toLocaleString()} ៛</span>
+    </div>
+    <div class="price-r">
+      <span class="p-label" style="color:var(--cn)">🇨🇳 中国</span>
+      <span class="p-val" style="color:var(--cn)">¥${item.rmb}</span>
+    </div>
+    <div class="bars">
+      <div class="bar-row">
+        <span class="bar-flag">🇰🇭</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${pK}%;background:var(--kh)"></div></div>
+        <span class="bar-usd">$${uK.toFixed(2)}</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-flag">🇨🇳</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${pR}%;background:var(--cn)"></div></div>
+        <span class="bar-usd">$${uR.toFixed(2)}</span>
+      </div>
+    </div>
+    <div class="badge ${bc}">${bl}</div>
+  </div>`;
+}
+
+function renderGrid(cat) {
+  const list = cat === 'all' ? items : items.filter(i => i.cat === cat);
+  document.getElementById('grid').innerHTML = list.map(renderCard).join('');
+}
+
+function setFilter(cat) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.cat === cat));
+  renderGrid(cat);
+}
+
+// tab counts
+['all','food','drink','household'].forEach(c => {
+  const el = document.getElementById('n-'+c);
+  if (el) el.textContent = c === 'all' ? items.length : items.filter(i => i.cat === c).length;
 });
+renderGrid('all');
 
-const addButtonStyle = {
-  width: "100%",
-  padding: "12px",
-  border: "none",
-  borderRadius: "12px",
-  background: "#2563eb",
-  color: "white",
-  cursor: "pointer",
-  fontSize: "16px",
-};
+// Vocabulary table
+(function() {
+  const rows = items.map(item => {
+    const uK = u2(item.khr/KHR), uR = u2(item.rmb/RMB);
+    const c = cheaperSide(item);
+    const cl = {kh:'badge-kh',cn:'badge-cn',eq:'badge-eq'}[c];
+    const ct = {kh:'KH',cn:'CN',eq:'≈'}[c];
+    return `<tr>
+      <td><div class="vt-zh">${item.zh}</div><div class="vt-py">${item.py}</div></td>
+      <td>${item.en}</td>
+      <td style="font-size:11px;color:var(--t2);">${item.unit}</td>
+      <td class="vt-kh">${item.khr.toLocaleString()} ៛<br><span style="font-size:10px;color:var(--t3);">≈$${uK.toFixed(2)}</span></td>
+      <td class="vt-cn">¥${item.rmb}<br><span style="font-size:10px;color:var(--t3);">≈$${uR.toFixed(2)}</span></td>
+      <td><span class="cheaper-cell ${cl}">${ct}</span></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('vocab').innerHTML = `
+    <thead><tr>
+      <th>中文 Chinese</th><th>English</th><th>规格 Unit</th>
+      <th style="color:var(--kh)">🇰🇭 柬埔寨 (KHR)</th>
+      <th style="color:var(--cn)">🇨🇳 中国 (RMB)</th>
+      <th>更便宜 Cheaper</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>`;
+})();
 
-const smallButton = {
-  width: "34px",
-  height: "34px",
-  borderRadius: "50%",
-  border: "none",
-  background: "#2563eb",
-  color: "white",
-  cursor: "pointer",
-  fontSize: "18px",
-};
+// Phrases — flip cards
+document.getElementById('phrases').innerHTML = phrases.map((p, i) =>
+  `<div class="phrase" id="ph${i}" onclick="flipPhrase(${i})" data-flipped="0">
+    <div class="phrase-zh">${p.zh}</div>
+    <div class="phrase-py">${p.py}</div>
+    <div class="phrase-en">${p.en}</div>
+  </div>`
+).join('');
 
-const selectStyle = {
-  width: "100%",
-  padding: "12px",
-  borderRadius: "10px",
-  border: "1px solid #ccc",
-  fontSize: "16px",
-};
+function flipPhrase(i) {
+  const el = document.getElementById('ph'+i);
+  const p = phrases[i];
+  const flipped = el.dataset.flipped === '1';
+  el.dataset.flipped = flipped ? '0' : '1';
+  el.classList.toggle('flipped', !flipped);
+  if (!flipped) {
+    el.querySelector('.phrase-zh').textContent = p.en;
+    el.querySelector('.phrase-py').textContent = p.py;
+    el.querySelector('.phrase-en').textContent = '← 中文 Chinese: ' + p.zh;
+  } else {
+    el.querySelector('.phrase-zh').textContent = p.zh;
+    el.querySelector('.phrase-py').textContent = p.py;
+    el.querySelector('.phrase-en').textContent = p.en;
+  }
+}
 
-export default App;
+// Quiz
+let qIdx = 0, score = 0, pool = [], curOpts = [];
+
+function newPool() {
+  pool = [...items].sort(() => Math.random() - 0.5).slice(0, 6);
+}
+
+function renderQuiz() {
+  const el = document.getElementById('quiz');
+  if (qIdx >= pool.length) {
+    const pct = score / pool.length;
+    const msg = pct === 1 ? '满分！真棒！🏆' : pct >= 0.67 ? '不错！再接再厉！🌟' : '继续练习，加油！💪';
+    el.innerHTML = `<div class="q-score">
+      <div style="font-size:40px;margin-bottom:10px;">${pct===1?'🏆':pct>=0.67?'🌟':'💪'}</div>
+      <div class="q-score-big">${score}<span style="font-size:22px;color:var(--t2);">/${pool.length}</span></div>
+      <div class="q-score-of">你的得分 Your score</div>
+      <div class="q-score-msg">${msg}</div>
+      <button class="btn-dark" onclick="resetQuiz()">再来一次 Play again →</button>
+    </div>`;
+    return;
+  }
+  const item = pool[qIdx];
+  const wrongs = items.filter(i => i.zh !== item.zh).sort(() => Math.random() - 0.5).slice(0, 3);
+  curOpts = [...wrongs, item].sort(() => Math.random() - 0.5);
+  const dots = pool.map((_, i) =>
+    `<div class="q-dot ${i < qIdx ? 'done' : i === qIdx ? 'cur' : ''}"></div>`).join('');
+
+  el.innerHTML = `<div class="quiz-prog">${dots}</div>
+    <div class="q-label">这个中文词是什么意思？ · What does this mean? (${qIdx+1}/${pool.length})</div>
+    <div class="q-zh">${item.zh}</div>
+    <div class="q-py">${item.py}</div>
+    <div class="q-opts">
+      ${curOpts.map((o, idx) =>
+        `<button class="q-opt" data-idx="${idx}" onclick="pick(this,${idx})">${o.en}<br><small style="color:inherit;opacity:0.7;font-size:10px;">${o.unit}</small></button>`
+      ).join('')}
+    </div>
+    <div id="qfb" style="display:none" class="q-feedback"></div>`;
+}
+
+function pick(btn, idx) {
+  const item = pool[qIdx];
+  const chosen = curOpts[idx];
+  document.querySelectorAll('.q-opt').forEach(b => b.disabled = true);
+  const fb = document.getElementById('qfb');
+  if (chosen.zh === item.zh) {
+    btn.classList.add('ok');
+    score++;
+    fb.className = 'q-feedback ok';
+    fb.textContent = '✓ 正确！Correct!';
+  } else {
+    btn.classList.add('ng');
+    document.querySelectorAll('.q-opt').forEach(b => {
+      if (curOpts[b.dataset.idx].zh === item.zh) b.classList.add('ok');
+    });
+    fb.className = 'q-feedback ng';
+    fb.textContent = '✗ 正确答案是 Correct answer: ' + item.en + ' (' + item.zh + ')';
+  }
+  fb.style.display = 'block';
+  setTimeout(() => { qIdx++; renderQuiz(); }, 1500);
+}
+
+function resetQuiz() { qIdx = 0; score = 0; newPool(); renderQuiz(); }
+newPool(); renderQuiz();
+</script>
+</body>
+</html>
