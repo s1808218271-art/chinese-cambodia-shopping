@@ -1,0 +1,532 @@
+import React, { useMemo, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ShoppingCart, Minus, Plus, Sparkles, Languages, Store, Receipt } from "lucide-react";
+import { BarChart, Bar, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
+
+const items = [
+  {
+    id: 1,
+    nameZh: "鸡蛋（12个）",
+    nameEn: "Eggs (12)",
+    unit: "盒",
+    category: "早餐",
+    china: 18,
+    cambodia: 12,
+    example: "我想买一盒鸡蛋。",
+  },
+  {
+    id: 2,
+    nameZh: "牛奶（1升）",
+    nameEn: "Milk (1L)",
+    unit: "盒",
+    category: "早餐",
+    china: 15,
+    cambodia: 10,
+    example: "这个牛奶多少钱？",
+  },
+  {
+    id: 3,
+    nameZh: "苹果（1斤）",
+    nameEn: "Apples (500g)",
+    unit: "斤",
+    category: "水果",
+    china: 9,
+    cambodia: 8,
+    example: "苹果便宜一点吗？",
+  },
+  {
+    id: 4,
+    nameZh: "大米（1公斤）",
+    nameEn: "Rice (1kg)",
+    unit: "袋",
+    category: "主食",
+    china: 8,
+    cambodia: 6,
+    example: "我要一袋大米。",
+  },
+  {
+    id: 5,
+    nameZh: "矿泉水（500ml）",
+    nameEn: "Water (500ml)",
+    unit: "瓶",
+    category: "饮料",
+    china: 3,
+    cambodia: 2,
+    example: "请给我一瓶水。",
+  },
+  {
+    id: 6,
+    nameZh: "洗发水",
+    nameEn: "Shampoo",
+    unit: "瓶",
+    category: "日用品",
+    china: 28,
+    cambodia: 22,
+    example: "我想看一下洗发水。",
+  },
+  {
+    id: 7,
+    nameZh: "牙膏",
+    nameEn: "Toothpaste",
+    unit: "支",
+    category: "日用品",
+    china: 12,
+    cambodia: 9,
+    example: "牙膏在哪里？",
+  },
+  {
+    id: 8,
+    nameZh: "面包",
+    nameEn: "Bread",
+    unit: "个",
+    category: "早餐",
+    china: 7,
+    cambodia: 5,
+    example: "我要两个面包。",
+  },
+];
+
+const categories = ["全部", "早餐", "水果", "主食", "饮料", "日用品"];
+
+const starterSentences = [
+  "请问，……在哪里？",
+  "这个多少钱？",
+  "我想买……",
+  "太贵了，可以便宜一点吗？",
+  "我要一份/一盒/一瓶……",
+  "可以刷卡吗？",
+];
+
+function money(n) {
+  return `¥${n}`;
+}
+
+function App() {
+  const [selectedCategory, setSelectedCategory] = useState("全部");
+  const [search, setSearch] = useState("");
+  const [countryMode, setCountryMode] = useState("china");
+  const [basket, setBasket] = useState({});
+  const [sentenceParts, setSentenceParts] = useState({
+    item: "鸡蛋（12个）",
+    quantity: "一盒",
+    price: "",
+    action: "买",
+  });
+  const [practiceChecked, setPracticeChecked] = useState({});
+
+  const filtered = useMemo(() => {
+    return items.filter((item) => {
+      const matchCategory = selectedCategory === "全部" || item.category === selectedCategory;
+      const query = search.trim().toLowerCase();
+      const matchSearch =
+        !query ||
+        item.nameZh.toLowerCase().includes(query) ||
+        item.nameEn.toLowerCase().includes(query) ||
+        item.category.toLowerCase().includes(query);
+      return matchCategory && matchSearch;
+    });
+  }, [selectedCategory, search]);
+
+  const chartData = useMemo(
+    () =>
+      filtered.map((item) => ({
+        name: item.nameZh,
+        中国: item.china,
+        柬埔寨: item.cambodia,
+      })),
+    [filtered],
+  );
+
+  const total = useMemo(
+    () =>
+      Object.entries(basket).reduce((sum, [id, qty]) => {
+        const item = items.find((x) => x.id === Number(id));
+        if (!item) return sum;
+        const unitPrice = countryMode === "china" ? item.china : item.cambodia;
+        return sum + unitPrice * qty;
+      }, 0),
+    [basket, countryMode],
+  );
+
+  const sentence = useMemo(() => {
+    const item = sentenceParts.item || "……";
+    const qty = sentenceParts.quantity || "一份";
+    const action = sentenceParts.action || "买";
+    const priceText = sentenceParts.price ? `，价格是${sentenceParts.price}` : "";
+    return `我想${action}${qty}${item}${priceText}。`;
+  }, [sentenceParts]);
+
+  const addItem = (id) => {
+    setBasket((prev) => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
+  };
+
+  const removeItem = (id) => {
+    setBasket((prev) => {
+      const next = { ...prev };
+      if (!next[id]) return next;
+      next[id] -= 1;
+      if (next[id] <= 0) delete next[id];
+      return next;
+    });
+  };
+
+  const shoppingScript = [
+    { zh: "请问，这个多少钱？", en: "Excuse me, how much is this?" },
+    { zh: "我要两个。", en: "I want two." },
+    { zh: "可以便宜一点吗？", en: "Could it be a little cheaper?" },
+    { zh: "我用支付宝。", en: "I will pay with Alipay." },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-sky-50 text-slate-900 p-4 md:p-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div className="grid gap-4 rounded-3xl border bg-white/90 p-6 shadow-sm md:grid-cols-[1.4fr_1fr]">
+          <div>
+            <div className="mb-3 flex items-center gap-2 text-sm text-sky-700">
+              <Sparkles className="h-4 w-4" />
+              <span>中文教学互动网页</span>
+            </div>
+            <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">柬埔寨和中国的价格对比购物课</h1>
+            <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
+              用学生熟悉的日常物品做价格可视化对比，帮助他们学习在中国超市里询问价格、表达数量、完成购物对话。
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Badge variant="secondary">日常生活词汇</Badge>
+              <Badge variant="secondary">价格比较</Badge>
+              <Badge variant="secondary">超市场景</Badge>
+              <Badge variant="secondary">口语操练</Badge>
+            </div>
+          </div>
+          <Card className="rounded-3xl border-slate-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <Store className="h-5 w-5" /> 课堂使用方式
+              </CardTitle>
+              <CardDescription>教师可先展示价格，再带学生完成句型和角色扮演。</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-slate-600">
+              <p>1. 先看价格，比较中国和柬埔寨的生活差异。</p>
+              <p>2. 再读中文句子，学会问价、买单、讨价还价。</p>
+              <p>3. 最后进入模拟超市对话，学生可以自由点选商品。</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Tabs defaultValue="compare" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-3 rounded-2xl bg-white p-1 shadow-sm">
+            <TabsTrigger value="compare">价格对比</TabsTrigger>
+            <TabsTrigger value="practice">句型练习</TabsTrigger>
+            <TabsTrigger value="checkout">购物结算</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="compare" className="space-y-4">
+            <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+              <Card className="rounded-3xl">
+                <CardHeader>
+                  <CardTitle>筛选商品</CardTitle>
+                  <CardDescription>按类别和关键词快速找到适合课堂的物品。</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Input
+                    placeholder="搜索：鸡蛋、牛奶、日用品..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    {categories.map((cat) => (
+                      <Button
+                        key={cat}
+                        variant={selectedCategory === cat ? "default" : "outline"}
+                        className="rounded-full"
+                        onClick={() => setSelectedCategory(cat)}
+                      >
+                        {cat}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="rounded-2xl bg-slate-50 p-4">
+                    <p className="text-sm text-slate-500">展示模式</p>
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        variant={countryMode === "china" ? "default" : "outline"}
+                        onClick={() => setCountryMode("china")}
+                      >
+                        中国价格
+                      </Button>
+                      <Button
+                        variant={countryMode === "cambodia" ? "default" : "outline"}
+                        onClick={() => setCountryMode("cambodia")}
+                      >
+                        柬埔寨价格
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-3xl">
+                <CardHeader>
+                  <CardTitle>可视化价格对比</CardTitle>
+                  <CardDescription>柱状图帮助学生快速理解中柬生活用品价格差异。</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[360px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 24 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" height={70} interval={0} />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Bar dataKey="中国" />
+                        <Bar dataKey="柬埔寨" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {filtered.map((item) => (
+                <div key={item.id}>
+                  <Card className="h-full rounded-3xl border-slate-200">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <CardTitle className="text-lg">{item.nameZh}</CardTitle>
+                          <CardDescription>{item.nameEn}</CardDescription>
+                        </div>
+                        <Badge>{item.category}</Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4 text-sm">
+                      <div className="rounded-2xl bg-slate-50 p-4">
+                        <div className="flex items-center justify-between">
+                          <span>中国</span>
+                          <span className="font-semibold">{money(item.china)}</span>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between">
+                          <span>柬埔寨</span>
+                          <span className="font-semibold">{money(item.cambodia)}</span>
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-dashed p-3 text-slate-600">
+                        课堂句子：{item.example}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" className="flex-1 rounded-full" onClick={() => addItem(item.id)}>
+                          <Plus className="mr-1 h-4 w-4" /> 加入购物车
+                        </Button>
+                        <Button size="sm" variant="outline" className="rounded-full" onClick={() => removeItem(item.id)}>
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="practice" className="space-y-4">
+            <div className="grid gap-4 lg:grid-cols-[1fr_420px]">
+              <Card className="rounded-3xl">
+                <CardHeader>
+                  <CardTitle>句型搭建器</CardTitle>
+                  <CardDescription>把商品、数量、动作组合成一句完整中文。</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <p className="mb-2 text-sm text-slate-500">商品</p>
+                      <select
+                        className="w-full rounded-xl border bg-white px-3 py-2 text-sm"
+                        value={sentenceParts.item}
+                        onChange={(e) => setSentenceParts((p) => ({ ...p, item: e.target.value }))}
+                      >
+                        {items.map((item) => (
+                          <option key={item.id} value={item.nameZh}>
+                            {item.nameZh}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <p className="mb-2 text-sm text-slate-500">数量</p>
+                      <select
+                        className="w-full rounded-xl border bg-white px-3 py-2 text-sm"
+                        value={sentenceParts.quantity}
+                        onChange={(e) => setSentenceParts((p) => ({ ...p, quantity: e.target.value }))}
+                      >
+                        <option>一盒</option>
+                        <option>两个</option>
+                        <option>一瓶</option>
+                        <option>一袋</option>
+                        <option>三份</option>
+                      </select>
+                    </div>
+                    <div>
+                      <p className="mb-2 text-sm text-slate-500">动作</p>
+                      <select
+                        className="w-full rounded-xl border bg-white px-3 py-2 text-sm"
+                        value={sentenceParts.action}
+                        onChange={(e) => setSentenceParts((p) => ({ ...p, action: e.target.value }))}
+                      >
+                        <option>买</option>
+                        <option>要</option>
+                        <option>找</option>
+                        <option>看</option>
+                      </select>
+                    </div>
+                    <div>
+                      <p className="mb-2 text-sm text-slate-500">价格补充</p>
+                      <Input
+                        placeholder="例如：12元"
+                        value={sentenceParts.price}
+                        onChange={(e) => setSentenceParts((p) => ({ ...p, price: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl bg-sky-50 p-5 text-lg leading-8 text-sky-900">
+                    {sentence}
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {starterSentences.map((s) => (
+                      <label key={s} className="flex items-center gap-3 rounded-2xl border p-3 text-sm">
+                        <Checkbox
+                          checked={!!practiceChecked[s]}
+                          onCheckedChange={(checked) =>
+                            setPracticeChecked((prev) => ({ ...prev, [s]: Boolean(checked) }))
+                          }
+                        />                        <span>{s}</span>
+                      </label>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-3xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Languages className="h-5 w-5" /> 教师引导句
+                  </CardTitle>
+                  <CardDescription>适合课堂上直接投屏使用。</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  <div className="rounded-2xl border bg-slate-50 p-4">
+                    <p className="font-medium text-slate-700">中文</p>
+                    <p className="mt-2 leading-7">
+                      你要买什么？这个多少钱？你觉得中国的价格和柬埔寨的价格一样吗？
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border bg-slate-50 p-4">
+                    <p className="font-medium text-slate-700">English support</p>
+                    <p className="mt-2 leading-7">
+                      What do you want to buy? How much is this? Are prices in China and Cambodia the same?
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border bg-slate-50 p-4">
+                    <p className="font-medium text-slate-700">Task</p>
+                    <p className="mt-2 leading-7">Choose three products and say one full shopping sentence for each.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="checkout" className="space-y-4">
+            <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+              <Card className="rounded-3xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ShoppingCart className="h-5 w-5" /> 模拟购物车
+                  </CardTitle>
+                  <CardDescription>点击商品加入购物车，练习“我要买...”和“多少钱”。</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {items.map((item) => {
+                    const qty = basket[item.id] || 0;
+                    const unitPrice = countryMode === "china" ? item.china : item.cambodia;
+                    return (
+                      <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4">
+                        <div>
+                          <p className="font-medium">{item.nameZh}</p>
+                          <p className="text-sm text-slate-500">{countryMode === "china" ? "中国" : "柬埔寨"}价格：{money(unitPrice)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="icon" className="rounded-full" onClick={() => removeItem(item.id)}>
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <span className="w-8 text-center text-sm">{qty}</span>
+                          <Button size="icon" className="rounded-full" onClick={() => addItem(item.id)}>
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+
+              <div className="space-y-4">
+                <Card className="rounded-3xl">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Receipt className="h-5 w-5" /> 结算单
+                    </CardTitle>
+                    <CardDescription>帮助学生说出数量和总价。</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="rounded-2xl bg-slate-50 p-4">
+                      <p className="text-sm text-slate-500">当前模式</p>
+                      <p className="text-lg font-semibold">{countryMode === "china" ? "中国超市" : "柬埔寨商店"}</p>
+                    </div>
+                    <div className="rounded-2xl bg-sky-50 p-4">
+                      <p className="text-sm text-slate-500">总价</p>
+                      <p className="text-3xl font-bold text-sky-700">{money(total)}</p>
+                    </div>
+                    <p className="rounded-2xl border p-4 text-sm leading-7 text-slate-600">
+                      可引导学生说：<br />
+                      “我要这个。” “一共多少钱？” “我买好了，谢谢。”
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-3xl">
+                  <CardHeader>
+                    <CardTitle>购物对话范例</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm">
+                    {shoppingScript.map((line, idx) => (
+                      <div key={idx} className="rounded-2xl border p-3">
+                        <p className="font-medium">{line.zh}</p>
+                        <p className="mt-1 text-slate-500">{line.en}</p>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        <Card className="rounded-3xl border-dashed bg-white/80">
+          <CardContent className="p-4 text-sm text-slate-600 md:flex md:items-center md:justify-between">
+            <span>适合课堂：展示价格、引导问答、角色扮演、课后复习。</span>
+            <span className="mt-2 md:mt-0">可直接继续扩展更多商品、音频、图片和学生练习记录。</span>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export default App;
